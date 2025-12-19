@@ -2,113 +2,147 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Scanner v3</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scanner Pro v4</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    body { font-family: sans-serif; margin: 0; padding: 10px; background: #f3f4f6; color: #1f2937; }
-    .container { max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-    
-    /* Zone Vidéo */
-    #wrapper { position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #000; aspect-ratio: 4/3; }
+    body { font-family: sans-serif; margin: 0; background: #000; color: white; display: flex; flex-direction: column; height: 100vh; }
+    .header { padding: 15px; background: #111827; text-align: center; font-weight: bold; }
+    #video-container { flex: 1; position: relative; overflow: hidden; background: #000; }
     video { width: 100%; height: 100%; object-fit: cover; }
     
-    /* Contrôles */
-    .controls { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .status { font-weight: bold; margin-bottom: 10px; min-height: 40px; color: #374151; word-break: break-all; }
-    button { width: 100%; padding: 15px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+    .ui-overlay { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.7); padding: 20px; box-sizing: border-box; }
+    .status { margin-bottom: 15px; font-size: 0.9rem; min-height: 1.2rem; text-align: center; color: #10b981; }
     
-    /* Style du Zoom */
-    .zoom-container { margin-top: 15px; display: flex; flex-direction: column; gap: 5px; }
-    input[type=range] { width: 100%; height: 25px; }
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button { padding: 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+    .btn-primary { background: #2563eb; color: white; grid-column: span 2; }
+    .btn-secondary { background: #4b5563; color: white; }
+    
+    .zoom-slider { margin-top: 15px; width: 100%; }
+    label { font-size: 0.8rem; display: block; margin-bottom: 5px; }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <div id="wrapper">
+  <div class="header">PANEL SCANNER v4</div>
+
+  <div id="video-container">
     <video id="video" playsinline></video>
   </div>
 
-  <div class="controls">
-    <div id="status" class="status">Appuyez sur Démarrer</div>
-    <button id="startBtn">DÉMARRER LE SCAN</button>
+  <div class="ui-overlay">
+    <div id="status" class="status">Prêt</div>
+    
+    <div class="btn-group">
+      <button id="startBtn" class="btn-primary">DÉMARRER LA CAMÉRA</button>
+      <button id="torchBtn" class="btn-secondary" style="display:none;">TORCHE OFF</button>
+      <button id="refocusBtn" class="btn-secondary" style="display:none;">REFOCUS</button>
+    </div>
 
-    <div class="zoom-container">
-      <label>Zoom Numérique :</label>
-      <input type="range" id="zoomRange" min="1" max="3" step="0.1" value="1">
+    <div id="zoom-area" style="display:none;">
+      <label>Zoom Matériel :</label>
+      <input type="range" id="zoomRange" class="zoom-slider" min="1" max="5" step="0.1" value="1">
     </div>
   </div>
-</div>
 
-<canvas id="canvas" style="display:none;"></canvas>
+  <canvas id="canvas" style="display:none;"></canvas>
 
 <script>
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
   const status = document.getElementById('status');
   const startBtn = document.getElementById('startBtn');
+  const torchBtn = document.getElementById('torchBtn');
+  const refocusBtn = document.getElementById('refocusBtn');
   const zoomRange = document.getElementById('zoomRange');
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const ctx = canvas.getContext('2d', { alpha: false });
 
-  let isScanning = false;
+  let videoTrack = null;
 
   startBtn.onclick = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
         }
       });
       video.srcObject = stream;
+      videoTrack = stream.getVideoTracks()[0];
+      
       await video.play();
-      isScanning = true;
       startBtn.style.display = 'none';
+      torchBtn.style.display = 'block';
+      refocusBtn.style.display = 'block';
+      document.getElementById('zoom-area').style.display = 'block';
+
+      // Tenter d'activer l'autofocus continu
+      const capabilities = videoTrack.getCapabilities();
+      if (capabilities.focusMode) {
+        videoTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+      }
+
       requestAnimationFrame(tick);
     } catch (err) {
-      status.textContent = "Erreur : " + err.name;
+      status.textContent = "Erreur: " + err.message;
+    }
+  };
+
+  // Bouton pour forcer le focus (sur certains Android)
+  refocusBtn.onclick = async () => {
+    if (videoTrack) {
+      status.textContent = "Mise au point...";
+      try {
+        await videoTrack.applyConstraints({ advanced: [{ focusMode: "manual", focusDistance: 0.1 }] }); // Focus proche
+        setTimeout(() => {
+          videoTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+        }, 500);
+      } catch (e) { status.textContent = "Focus manuel non supporté"; }
+    }
+  };
+
+  // Gestion de la lampe torche
+  let torchOn = false;
+  torchBtn.onclick = async () => {
+    if (videoTrack) {
+      torchOn = !torchOn;
+      try {
+        await videoTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
+        torchBtn.textContent = torchOn ? "TORCHE ON" : "TORCHE OFF";
+      } catch (e) { status.textContent = "Flash non supporté"; }
+    }
+  };
+
+  // Zoom Matériel
+  zoomRange.oninput = async () => {
+    if (videoTrack) {
+      try {
+        await videoTrack.applyConstraints({ advanced: [{ zoom: parseFloat(zoomRange.value) }] });
+      } catch (e) {
+        // Fallback zoom numérique si le matériel échoue
+        video.style.transform = `scale(${zoomRange.value})`;
+      }
     }
   };
 
   function tick() {
-    if (video.readyState === video.HAVE_ENOUGH_DATA && isScanning) {
-      const zoom = parseFloat(zoomRange.value);
-      
-      // On définit la taille du canvas
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-
-      // On applique le zoom numérique sur le canvas AVANT le scan
-      // Cela permet à l'algorithme de voir le QR code en plus gros
-      const sw = canvas.width / zoom;
-      const sh = canvas.height / zoom;
-      const sx = (canvas.width - sw) / 2;
-      const sy = (canvas.height - sh) / 2;
-
-      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(imageData.data, imageData.width, imageData.height);
 
       if (code) {
-        status.innerHTML = "✅ TROUVÉ : <br>" + code.data;
-        status.style.color = "#059669";
-        if (navigator.vibrate) navigator.vibrate(100);
-      } else {
-        status.textContent = "Scan en cours... Utilisez le curseur pour zoomer";
-        status.style.color = "#374151";
+        status.innerHTML = "✅ TROUVÉ : " + code.data;
+        if (navigator.vibrate) navigator.vibrate(200);
       }
     }
     requestAnimationFrame(tick);
   }
-
-  // Appliquer visuellement le zoom sur la vidéo pour l'utilisateur
-  zoomRange.oninput = () => {
-    video.style.transform = `scale(${zoomRange.value})`;
-  };
 </script>
-
 </body>
 </html>
