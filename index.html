@@ -2,252 +2,68 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>Scanner QR Industriel</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scanner QR – Fix caméra</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- ZXing ROBUSTE -->
 <script src="https://unpkg.com/@zxing/browser@0.1.4"></script>
 
 <style>
-body {
-  margin:0;
-  font-family:system-ui, sans-serif;
-  background:#0f172a;
-  color:white;
-  height:100dvh;
-  display:flex;
-  flex-direction:column;
-}
-
-header {
-  background:#1e293b;
-  padding:10px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-#videoWrap {
-  position:relative;
-  height:35%;
-  background:black;
-}
-
-video {
-  width:100%;
-  height:100%;
-  object-fit:cover;
-}
-
-.overlay {
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
-
-.box {
-  width:180px;
-  height:180px;
-  border:3px solid #22c55e;
-}
-
-.status {
-  background:white;
-  color:#0f172a;
-  padding:12px;
-  text-align:center;
-}
-
-.step {
-  font-size:0.7rem;
-  font-weight:700;
-  color:#2563eb;
-}
-
-.res {
-  font-weight:800;
-  min-height:28px;
-}
-
-.list {
-  flex:1;
-  overflow:auto;
-  background:#f1f5f9;
-  color:#0f172a;
-  padding:10px;
-}
-
-.item {
-  background:white;
-  padding:8px;
-  border-radius:8px;
-  margin-bottom:6px;
-  font-size:0.8rem;
-  border-left:4px solid #2563eb;
-}
-
-footer {
-  background:white;
-  padding:10px;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-
-button {
-  padding:14px;
-  border:none;
-  border-radius:10px;
-  font-weight:800;
-}
-
-.start { grid-column:span 2; background:#2563eb; color:white; }
-.next  { grid-column:span 2; background:#22c55e; color:white; }
-.csv   { background:#e5e7eb; }
-.clear { background:#fee2e2; color:#dc2626; }
+body{margin:0;font-family:system-ui;background:#0f172a;color:white;height:100vh;display:flex;flex-direction:column}
+header{background:#1e293b;padding:10px;text-align:center;font-weight:800}
+#videoWrap{flex:1;background:black;position:relative}
+video{width:100%;height:100%;object-fit:cover}
+.status{background:white;color:#0f172a;padding:10px;text-align:center;font-weight:700}
+button{padding:16px;margin:10px;border:none;border-radius:10px;font-size:1rem;font-weight:800;background:#2563eb;color:white}
 </style>
 </head>
 
 <body>
 
-<header>
-  <b id="panelName">Panneau 1</b>
-  <button onclick="renamePanel()">Renommer</button>
-</header>
+<header>Scanner QR – Test caméra</header>
 
 <div id="videoWrap">
   <video id="video" playsinline muted></video>
-  <div class="overlay"><div class="box"></div></div>
 </div>
 
-<div class="status">
-  <div id="step" class="step">1. SCANNER LE NUMÉRO DE SÉRIE</div>
-  <div id="result" class="res">Appuyez sur DÉMARRER</div>
-</div>
-
-<div id="list" class="list"></div>
-
-<footer>
-  <button class="start" onclick="startScan()">DÉMARRER LE SCAN</button>
-  <button class="next" onclick="nextPanel()">＋ PANNEAU</button>
-  <button class="csv" onclick="exportCSV()">EXPORT CSV</button>
-  <button class="clear" onclick="clearAll()">VIDER</button>
-</footer>
+<div class="status" id="status">Appuyez sur DÉMARRER</div>
+<button onclick="start()">DÉMARRER LE SCAN</button>
 
 <script>
 const video = document.getElementById("video");
-const stepTxt = document.getElementById("step");
-const resTxt  = document.getElementById("result");
-const listDiv = document.getElementById("list");
+const status = document.getElementById("status");
 
-const codeReader = new ZXing.BrowserQRCodeReader(undefined, {
-  delayBetweenScanAttempts: 80,
-  delayBetweenScanSuccess: 800
-});
+let stream;
+let reader;
 
-let scanning = false;
-let currentSN = "";
-let panelName = "Panneau 1";
+async function start() {
+  status.textContent = "Demande accès caméra…";
 
-let data = JSON.parse(localStorage.getItem("qr_panels")) || {};
-render();
+  try {
+    // 1️⃣ Démarrer la caméra EXPLICITEMENT
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+      audio: false
+    });
 
-async function startScan() {
-  resTxt.textContent = "Initialisation caméra…";
+    video.srcObject = stream;
+    await video.play();
 
-  await codeReader.decodeFromVideoDevice(
-    null,
-    video,
-    (result, err) => {
-      if (result && scanning) {
-        handleScan(result.getText().trim());
+    status.textContent = "Caméra OK – démarrage du scan";
+
+    // 2️⃣ Démarrer ZXing APRÈS vidéo active
+    reader = new ZXing.BrowserQRCodeReader();
+
+    reader.decodeFromVideoElement(video, (result, err) => {
+      if (result) {
+        status.textContent = "QR détecté : " + result.getText();
+        navigator.vibrate?.(200);
       }
-    }
-  );
-
-  scanning = true;
-  resTxt.textContent = "Scan actif – approchez le QR";
-}
-
-function handleScan(value) {
-  scanning = false;
-
-  if (!currentSN) {
-    currentSN = value;
-    stepTxt.textContent = "2. SCANNER L’ADRESSE MAC";
-    resTxt.innerHTML = `SN : <b style="color:#2563eb">${value}</b>`;
-  } else {
-    if (value === currentSN) {
-      scanning = true;
-      return;
-    }
-
-    saveEntry(panelName, currentSN, value);
-    currentSN = "";
-
-    stepTxt.textContent = "1. SCANNER LE NUMÉRO DE SÉRIE";
-    resTxt.innerHTML = "<span style='color:#22c55e'>✅ ENREGISTRÉ</span>";
-  }
-
-  setTimeout(() => {
-    resTxt.textContent = "Prêt pour le suivant";
-    scanning = true;
-  }, 1000);
-}
-
-function saveEntry(panel, sn, mac) {
-  if (!data[panel]) data[panel] = [];
-  data[panel].push({ sn, mac, time: new Date().toLocaleTimeString() });
-  localStorage.setItem("qr_panels", JSON.stringify(data));
-  render();
-}
-
-function render() {
-  listDiv.innerHTML = "";
-  Object.keys(data).reverse().forEach(panel => {
-    data[panel].forEach(item => {
-      const d = document.createElement("div");
-      d.className = "item";
-      d.innerHTML = `<b>${panel}</b><br>SN: ${item.sn}<br>MAC: ${item.mac}`;
-      listDiv.appendChild(d);
     });
-  });
-}
 
-function nextPanel() {
-  panelName = "Panneau " + (Object.keys(data).length + 1);
-  document.getElementById("panelName").textContent = panelName;
-}
-
-function renamePanel() {
-  const n = prompt("Nom du panneau", panelName);
-  if (n) {
-    panelName = n;
-    document.getElementById("panelName").textContent = n;
-  }
-}
-
-function exportCSV() {
-  let csv = "Panneau,SN,MAC\n";
-  for (const p in data) {
-    data[p].forEach(r => {
-      csv += `${p},${r.sn},${r.mac}\n`;
-    });
-  }
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-  a.download = "inventaire_qr.csv";
-  a.click();
-}
-
-function clearAll() {
-  if (confirm("Tout effacer ?")) {
-    data = {};
-    localStorage.removeItem("qr_panels");
-    render();
+  } catch (e) {
+    console.error(e);
+    status.textContent = "❌ Erreur caméra : " + e.message;
+    alert("Accès caméra refusé ou indisponible");
   }
 }
 </script>
