@@ -2,65 +2,59 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Scanner v11 - Debug Mode</title>
+  <title>Scanner v12 - Manuel Fix</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     body { font-family: sans-serif; margin: 0; background: #f3f4f6; display: flex; flex-direction: column; height: 100vh; }
-    .header { padding: 10px; background: #111827; color: white; display: flex; justify-content: space-between; font-size: 0.9rem; }
-    
-    /* Zone Vidéo */
-    #video-container { width: 100%; height: 180px; background: #000; position: relative; overflow: hidden; border-bottom: 2px solid #2563eb; }
+    .header { padding: 10px; background: #111827; color: white; display: flex; justify-content: space-between; align-items: center; }
+    #video-container { width: 100%; height: 180px; background: #000; position: relative; border-bottom: 2px solid #2563eb; }
     video { width: 100%; height: 100%; object-fit: cover; }
     
-    /* Contrôles Hardware */
-    .hw-controls { background: #1f2937; padding: 8px; display: flex; gap: 5px; }
-    .hw-controls button { flex: 1; padding: 10px; font-size: 0.7rem; background: #374151; color: white; border: none; border-radius: 4px; font-weight: bold; }
+    .hw-controls { background: #1f2937; padding: 10px; display: flex; gap: 10px; }
+    .hw-controls button { flex: 1; padding: 10px; background: #374151; color: white; border: none; border-radius: 4px; font-size: 0.7rem; }
 
-    /* Zone de Scan et Debug */
-    .scanner-ui { padding: 10px; background: white; text-align: center; border-bottom: 1px solid #ddd; }
-    #debug-log { font-family: monospace; font-size: 0.7rem; color: #ef4444; margin-bottom: 5px; height: 15px; }
-    .step-indicator { font-weight: bold; font-size: 0.8rem; padding: 4px 10px; border-radius: 10px; display: inline-block; margin-bottom: 5px; }
-    .res-box { font-size: 1.1rem; font-weight: bold; min-height: 44px; color: #111827; border: 2px dashed #ccc; padding: 5px; display: flex; align-items: center; justify-content: center; }
+    .scanner-ui { padding: 15px; background: white; text-align: center; border-bottom: 1px solid #ddd; }
+    .step-box { padding: 8px; border-radius: 8px; margin-bottom: 10px; font-weight: bold; font-size: 0.9rem; }
+    .res-text { font-size: 1.1rem; font-weight: bold; color: #111827; margin: 10px 0; min-height: 24px; word-break: break-all; }
 
-    /* Liste Inventaire */
-    .inventory-list { flex: 1; overflow-y: auto; padding: 10px; background: #eee; }
-    .item-card { background: white; padding: 10px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
-    .item-info { font-size: 0.8rem; line-height: 1.4; }
-    .btn-del { background: #fee2e2; color: #ef4444; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; }
+    /* Bouton de secours si le MAC ne scanne pas */
+    #manual-save-btn { background: #f59e0b; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; display: none; width: 100%; margin-top: 10px; }
 
-    /* Pied de page */
+    .inventory-list { flex: 1; overflow-y: auto; padding: 10px; }
+    .card { background: white; padding: 12px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #2563eb; }
+    
     .footer { padding: 10px; background: white; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .btn-blue { background: #2563eb; color: white; padding: 14px; border: none; border-radius: 8px; font-weight: bold; grid-column: span 2; }
+    .btn-blue { background: #2563eb; color: white; padding: 15px; border: none; border-radius: 8px; font-weight: bold; grid-column: span 2; }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <span id="panel-name">Panneau 1</span>
-    <button onclick="renamePanel()" style="background:#4b5563; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.7rem;">NOMMER</button>
+    <span id="p-name">Panneau 1</span>
+    <button onclick="renameP()" style="background:#4b5563; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:0.7rem;">NOMMER</button>
   </div>
 
   <div id="video-container"><video id="video" playsinline autoplay muted></video></div>
 
   <div class="hw-controls">
-    <button onclick="toggleTorch()">💡 TORCHE</button>
-    <button onclick="doFocus()">🎯 FOCUS</button>
-    <input type="range" id="zoomRange" min="1" max="5" step="0.1" value="1" style="flex:2;">
+    <button onclick="toggleT()">💡 TORCHE</button>
+    <button onclick="doF()">🎯 FOCUS</button>
+    <input type="range" id="zRange" min="1" max="5" step="0.1" value="1" style="flex:2;">
   </div>
 
   <div class="scanner-ui">
-    <div id="debug-log">Prêt</div>
-    <div id="step-tag" class="step-indicator" style="background:#dbeafe; color:#1e40af;">SCANNER LE SN</div>
-    <div id="res-display" class="res-box">---</div>
+    <div id="step-ui" class="step-box" style="background:#dbeafe; color:#1e40af;">Étape 1 : SCANNER LE SN</div>
+    <div id="res-ui" class="res-text">En attente...</div>
+    <button id="manual-save-btn" onclick="forceSave()">⚠️ LE MAC NE SCANNE PAS ? CLIQUER ICI</button>
   </div>
 
-  <div class="inventory-list" id="inventory"></div>
+  <div class="inventory-list" id="inv"></div>
 
   <div class="footer">
-    <button id="startBtn" class="btn-blue">DÉMARRER LE SCANNER</button>
-    <button onclick="nextPanel()" style="background:#10b981; color:white; border:none; border-radius:8px; font-weight:bold; grid-column: span 2; padding:10px;">＋ PANNEAU SUIVANT</button>
-    <button onclick="exportCSV()" style="background:#e5e7eb; border:none; border-radius:8px; padding:10px;">EXPORTER</button>
+    <button id="startBtn" class="btn-blue">ACTIVER LA CAMÉRA</button>
+    <button onclick="nextP()" style="background:#10b981; color:white; border:none; border-radius:8px; font-weight:bold; grid-column: span 2; padding:10px;">＋ PANNEAU SUIVANT</button>
+    <button onclick="exportCSV()" style="background:#e5e7eb; border:none; border-radius:8px; padding:10px;">EXPORTER CSV</button>
     <button onclick="clearAll()" style="background:#fef2f2; color:#ef4444; border:none; border-radius:8px;">VIDER</button>
   </div>
 
@@ -69,119 +63,121 @@
 <script>
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
-  const inventoryDiv = document.getElementById('inventory');
-  const resDisplay = document.getElementById('res-display');
-  const debugLog = document.getElementById('debug-log');
-  const stepTag = document.getElementById('step-tag');
+  const invDiv = document.getElementById('inv');
+  const resUi = document.getElementById('res-ui');
+  const stepUi = document.getElementById('step-ui');
+  const manualBtn = document.getElementById('manual-save-btn');
   const ctx = canvas.getContext('2d', { alpha: false });
 
-  let data = JSON.parse(localStorage.getItem('scan_v11')) || {};
-  let curPanel = "Panneau 1";
+  let data = JSON.parse(localStorage.getItem('scanner_v12')) || {};
+  let curP = "Panneau 1";
   let curSN = "";
-  let isScanning = false;
-  let track = null;
+  let isScan = false;
+  let streamTrack = null;
 
-  render();
+  updateInv();
 
   document.getElementById('startBtn').onclick = async () => {
     try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: 1280, height: 720 } });
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: 1280 } });
       video.srcObject = s;
-      track = s.getVideoTracks()[0];
-      isScanning = true;
+      streamTrack = s.getVideoTracks()[0];
+      isScan = true;
       document.getElementById('startBtn').style.display = 'none';
       requestAnimationFrame(tick);
-    } catch(e) { debugLog.textContent = "Erreur caméra: " + e.message; }
+    } catch(e) { alert("Erreur Caméra"); }
   };
 
   function tick() {
-    if (video.readyState === video.HAVE_ENOUGH_DATA && isScanning) {
+    if (video.readyState === video.HAVE_ENOUGH_DATA && isScan) {
       canvas.width = video.videoWidth; canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(img.data, img.width, img.height);
-      
       if (code) {
-        handleCode(code.data);
-        isScanning = false;
-        setTimeout(() => { isScanning = true; }, 2500); // Pause plus longue pour éviter les doublons
+        handle(code.data);
+        isScan = false;
+        setTimeout(() => { isScan = true; }, 2000);
       }
     }
     requestAnimationFrame(tick);
   }
 
-  function handleCode(val) {
-    debugLog.textContent = "Vu: " + val;
-    if (navigator.vibrate) navigator.vibrate(100);
-
+  function handle(val) {
     if (!curSN) {
       curSN = val;
-      stepTag.textContent = "SCANNER LE MAC";
-      stepTag.style.background = "#fef3c7"; stepTag.style.color = "#92400e";
-      resDisplay.innerHTML = `SN: <span style="color:blue;">${val}</span>`;
+      stepUi.textContent = "Étape 2 : SCANNER LE MAC";
+      stepUi.style.background = "#fef3c7"; stepUi.style.color = "#92400e";
+      resUi.innerHTML = `SN ACTUEL : <br><span style="color:blue;">${val}</span>`;
+      manualBtn.style.display = "block"; // Affiche le bouton de secours
+      if (navigator.vibrate) navigator.vibrate(100);
     } else {
-      if (val === curSN) {
-        debugLog.textContent = "Erreur: Code identique au SN, ignore.";
-        return; 
-      }
-      save(curPanel, curSN, val);
-      resDisplay.innerHTML = `<span style="color:green;">✅ AJOUTÉ !</span>`;
-      curSN = "";
-      setTimeout(() => {
-        stepTag.textContent = "SCANNER LE SN";
-        stepTag.style.background = "#dbeafe"; stepTag.style.color = "#1e40af";
-        resDisplay.textContent = "---";
-      }, 1500);
+      if (val === curSN) return; // Ignore si c'est le même code
+      save(val);
     }
   }
 
-  function save(p, s, m) {
-    if (!data[p]) data[p] = [];
-    data[p].push({ s, m, t: new Date().toLocaleTimeString() });
-    localStorage.setItem('scan_v11', JSON.stringify(data));
-    render();
+  function forceSave() {
+    const manualMAC = prompt("Le scanner n'arrive pas à lire le MAC. Entrez-le manuellement ou scannez à nouveau :", "");
+    if (manualMAC) save(manualMAC);
   }
 
-  function render() {
-    inventoryDiv.innerHTML = "";
+  function save(macVal) {
+    if (!data[curP]) data[curP] = [];
+    data[curP].push({ sn: curSN, mac: macVal });
+    localStorage.setItem('scanner_v12', JSON.stringify(data));
+    
+    // Reset UI
+    resUi.innerHTML = "<span style='color:green;'>✅ ENREGISTRÉ !</span>";
+    curSN = "";
+    manualBtn.style.display = "none";
+    
+    setTimeout(() => {
+      stepUi.textContent = "Étape 1 : SCANNER LE SN";
+      stepUi.style.background = "#dbeafe"; stepUi.style.color = "#1e40af";
+      resUi.textContent = "En attente...";
+      updateInv();
+    }, 1500);
+    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+  }
+
+  function updateInv() {
+    invDiv.innerHTML = "";
     Object.keys(data).reverse().forEach(p => {
-      data[p].forEach((item, i) => {
-        const div = document.createElement('div');
-        div.className = 'item-card';
-        div.innerHTML = `<div class="item-info"><b>[${p}]</b><br>SN: ${item.s}<br>MAC: ${item.m}</div>
-                         <button class="btn-del" onclick="del('${p}',${i})">X</button>`;
-        inventoryDiv.appendChild(div);
+      data[p].forEach((it, i) => {
+        const d = document.createElement('div');
+        d.className = 'card';
+        d.innerHTML = `<b>${p}</b><br>SN: ${it.sn}<br>MAC: ${it.mac} 
+                       <button onclick="del('${p}',${i})" style="float:right; color:red; border:none; background:none; font-weight:bold;">X</button>`;
+        invDiv.appendChild(d);
       });
     });
   }
 
-  // Fonctions de contrôle
-  async function toggleTorch() {
-    if (track) {
-      const c = track.getConstraints();
-      const on = c.advanced?.[0]?.torch || false;
-      await track.applyConstraints({ advanced: [{ torch: !on }] });
+  // Contrôles Samsung S23
+  async function toggleT() {
+    if (streamTrack) {
+      const c = streamTrack.getConstraints();
+      const on = streamTrack.getSettings().torch || false;
+      await streamTrack.applyConstraints({ advanced: [{ torch: !on }] });
     }
   }
-  async function doFocus() { if(track) await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }); }
-  document.getElementById('zoomRange').oninput = async (e) => {
-    if(track) {
-      const z = parseFloat(e.target.value);
-      try { await track.applyConstraints({ advanced: [{ zoom: z }] }); }
-      catch { video.style.transform = `scale(${z})`; }
-    }
+  async function doF() { if(streamTrack) await streamTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] }); }
+  document.getElementById('zRange').oninput = async (e) => {
+    const z = parseFloat(e.target.value);
+    if(streamTrack) { try { await streamTrack.applyConstraints({ advanced: [{ zoom: z }] }); } catch { video.style.transform = `scale(${z})`; } }
   };
 
-  function del(p, i) { if(confirm("Supprimer ?")) { data[p].splice(i,1); if(data[p].length==0) delete data[p]; localStorage.setItem('scan_v11', JSON.stringify(data)); render(); } }
-  function nextPanel() { curPanel = "Panneau " + (Object.keys(data).length + 1); document.getElementById('panel-name').textContent = curPanel; }
-  function renamePanel() { const n = prompt("Nom:", curPanel); if(n) { curPanel = n; document.getElementById('panel-name').textContent = n; } }
+  function del(p, i) { if(confirm("Supprimer ?")) { data[p].splice(i,1); if(data[p].length==0) delete data[p]; localStorage.setItem('scanner_v12', JSON.stringify(data)); updateInv(); } }
+  function nextP() { curP = "Panneau " + (Object.keys(data).length + 1); document.getElementById('p-name').textContent = curP; }
+  function renameP() { const n = prompt("Nom du panneau:", curP); if(n) { curP = n; document.getElementById('p-name').textContent = n; } }
   function exportCSV() { 
-    let csv = "Panneau,SN,MAC\n"; 
-    for(const p in data) data[p].forEach(item => csv += `${p},${item.s},${item.m}\n`);
-    const blob = new Blob([csv], {type: 'text/csv'});
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "inventaire.csv"; a.click();
+    let c = "Panneau,SN,MAC\n"; 
+    for(const p in data) data[p].forEach(it => c += `${p},${it.sn},${it.mac}\n`);
+    const b = new Blob([c], {type:'text/csv'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(b); a.download="inventaire.csv"; a.click();
   }
-  function clearAll() { if(confirm("Vider tout ?")) { data={}; localStorage.removeItem('scan_v11'); render(); } }
+  function clearAll() { if(confirm("Vider tout ?")) { data={}; localStorage.removeItem('scanner_v12'); updateInv(); } }
 </script>
 </body>
 </html>
