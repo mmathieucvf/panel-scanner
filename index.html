@@ -2,108 +2,107 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Panel Scanner</title>
+  <title>Panel Scanner Pro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#111827">
-
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-
   <style>
-    body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #f3f4f6; text-align: center; }
-    h1 { font-size: 1.4rem; color: #111827; }
-    .card { background: #fff; padding: 16px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 420px; margin: 0 auto; }
+    body { font-family: sans-serif; margin: 0; background: #111827; color: white; text-align: center; overflow: hidden; }
+    #container { position: relative; width: 100vw; height: 100vh; display: flex; flex-direction: column; }
     
-    #video-container { position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #000; line-height: 0; }
-    video { width: 100%; height: auto; }
+    video { width: 100%; height: 100%; object-fit: cover; }
     
-    button { 
-      width: 100%; margin-top: 16px; padding: 14px; font-size: 1rem; font-weight: 600;
-      border-radius: 12px; border: none; background: #111827; color: #fff; cursor: pointer;
+    /* Viseur */
+    #overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      border: 40px solid rgba(0,0,0,0.5); box-sizing: border-box;
+      pointer-events: none; display: flex; align-items: center; justify-content: center;
     }
-    button:active { opacity: 0.8; }
-    
-    .status { 
-      margin-top: 16px; padding: 12px; border-radius: 8px; background: #f9fafb;
-      font-weight: 500; word-break: break-all; min-height: 24px;
+    #scanner-box {
+      width: 250px; height: 250px; border: 2px solid #10b981;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.5); position: relative;
     }
-    .found { color: #059669; background: #ecfdf5; border: 1px solid #10b981; }
+    #scanner-line {
+      position: absolute; width: 100%; height: 2px; background: #10b981;
+      top: 0; animation: scan 2s infinite linear;
+    }
+    @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+
+    #ui { position: absolute; bottom: 30px; width: 100%; z-index: 10; }
+    .status { background: rgba(0,0,0,0.8); margin: 10px 20px; padding: 15px; border-radius: 12px; font-size: 0.9rem; }
+    button { background: #10b981; border: none; color: white; padding: 15px 30px; border-radius: 50px; font-size: 1rem; font-weight: bold; }
   </style>
 </head>
-
 <body>
-  <h1>Panel Scanner</h1>
 
-  <div class="card">
-    <div id="video-container">
-      <video id="video" playsinline></video>
+  <div id="container">
+    <video id="video" playsinline></video>
+    <div id="overlay">
+      <div id="scanner-box"><div id="scanner-line"></div></div>
     </div>
-    <button id="start">Démarrer le Scan</button>
-    <div class="status" id="status">Caméra inactive</div>
+
+    <div id="ui">
+      <div class="status" id="status">Prêt à scanner</div>
+      <button id="start">DÉMARRER LA CAMÉRA</button>
+    </div>
   </div>
 
   <canvas id="canvas" style="display:none;"></canvas>
 
   <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js');
-    }
-
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const status = document.getElementById('status');
     const startBtn = document.getElementById('start');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-    let scanning = false;
+    const ctx = canvas.getContext('2d', { alpha: false });
 
     startBtn.onclick = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { 
             facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 } 
+            width: { ideal: 1920 }, // Force la Full HD si disponible
+            height: { ideal: 1080 }
           }
         });
         video.srcObject = stream;
+        video.setAttribute("playsinline", true);
         await video.play();
-        
-        scanning = true;
-        status.textContent = "🔍 Recherche de code...";
-        status.classList.remove('found');
+        startBtn.style.display = 'none';
         requestAnimationFrame(tick);
       } catch (err) {
-        status.textContent = "❌ Accès caméra refusé ou non supporté";
+        status.textContent = "Erreur caméra: " + err.message;
       }
     };
 
     function tick() {
-      if (video.readyState === video.HAVE_ENOUGH_DATA && scanning) {
-        // On ajuste le canvas à la vidéo
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        // On augmente la taille du canvas pour capturer les détails
         canvas.height = video.videoHeight;
         canvas.width = video.videoWidth;
         
-        // Dessine l'image actuelle de la vidéo sur le canvas
+        // On dessine l'image
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        // Analyse les données de l'image
+        // OPTIMISATION : On récupère les données de l'image
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Scan avec jsQR
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
           inversionAttempts: "dontInvert",
         });
 
         if (code) {
-          status.innerHTML = `<b>Code trouvé :</b><br>${code.data}`;
-          status.classList.add('found');
-          // On peut s'arrêter après la détection si on veut :
-          // scanning = false; 
+          status.innerHTML = `✅ <b>TROUVÉ :</b> ${code.data}`;
+          status.style.color = "#10b981";
+          // Vibration si supportée
+          if (navigator.vibrate) navigator.vibrate(200);
+        } else {
+          status.textContent = "Alignez le QR code dans le carré vert";
+          status.style.color = "white";
         }
       }
-      if (scanning) {
-        requestAnimationFrame(tick);
-      }
+      requestAnimationFrame(tick);
     }
   </script>
 </body>
