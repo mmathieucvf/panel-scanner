@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Panel Scanner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111827">
+
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #f3f4f6; text-align: center; }
+    h1 { font-size: 1.4rem; color: #111827; }
+    .card { background: #fff; padding: 16px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 420px; margin: 0 auto; }
+    
+    #video-container { position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #000; line-height: 0; }
+    video { width: 100%; height: auto; }
+    
+    button { 
+      width: 100%; margin-top: 16px; padding: 14px; font-size: 1rem; font-weight: 600;
+      border-radius: 12px; border: none; background: #111827; color: #fff; cursor: pointer;
+    }
+    button:active { opacity: 0.8; }
+    
+    .status { 
+      margin-top: 16px; padding: 12px; border-radius: 8px; background: #f9fafb;
+      font-weight: 500; word-break: break-all; min-height: 24px;
+    }
+    .found { color: #059669; background: #ecfdf5; border: 1px solid #10b981; }
+  </style>
+</head>
+
+<body>
+  <h1>Panel Scanner</h1>
+
+  <div class="card">
+    <div id="video-container">
+      <video id="video" playsinline></video>
+    </div>
+    <button id="start">Démarrer le Scan</button>
+    <div class="status" id="status">Caméra inactive</div>
+  </div>
+
+  <canvas id="canvas" style="display:none;"></canvas>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js');
+    }
+
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+    const startBtn = document.getElementById('start');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    let scanning = false;
+
+    startBtn.onclick = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 } 
+          }
+        });
+        video.srcObject = stream;
+        await video.play();
+        
+        scanning = true;
+        status.textContent = "🔍 Recherche de code...";
+        status.classList.remove('found');
+        requestAnimationFrame(tick);
+      } catch (err) {
+        status.textContent = "❌ Accès caméra refusé ou non supporté";
+      }
+    };
+
+    function tick() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA && scanning) {
+        // On ajuste le canvas à la vidéo
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        
+        // Dessine l'image actuelle de la vidéo sur le canvas
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Analyse les données de l'image
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        });
+
+        if (code) {
+          status.innerHTML = `<b>Code trouvé :</b><br>${code.data}`;
+          status.classList.add('found');
+          // On peut s'arrêter après la détection si on veut :
+          // scanning = false; 
+        }
+      }
+      if (scanning) {
+        requestAnimationFrame(tick);
+      }
+    }
+  </script>
+</body>
+</html>
