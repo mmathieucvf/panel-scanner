@@ -2,52 +2,52 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Scanner v14 - Précision S23</title>
+  <title>Scanner v15 - S23 Ultra-Net</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    :root { --blue: #2563eb; }
+    :root { --primary: #2563eb; --success: #10b981; --bg: #0f172a; }
     body { 
-      font-family: system-ui, sans-serif; margin: 0; background: #0f172a; color: white;
+      font-family: system-ui, sans-serif; margin: 0; background: var(--bg); color: white;
       display: flex; flex-direction: column; height: 100dvh; overflow: hidden; 
     }
-
-    .header { padding: 10px 15px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    .header { padding: 12px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
     
-    /* Zone Vidéo avec Viseur */
-    #video-wrapper { position: relative; width: 100%; height: 40%; background: #000; flex-shrink: 0; overflow: hidden; }
+    /* Zone Vidéo avec viseur amélioré */
+    #video-wrapper { position: relative; width: 100%; height: 35%; background: #000; flex-shrink: 0; overflow: hidden; }
     video { width: 100%; height: 100%; object-fit: cover; }
-    
-    /* Le Viseur (Carré de visée) */
     .overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       display: flex; align-items: center; justify-content: center;
-      border: 20px solid rgba(0,0,0,0.3); box-sizing: border-box; pointer-events: none;
+      border: 30px solid rgba(0,0,0,0.5); box-sizing: border-box; pointer-events: none;
     }
-    .scanner-box {
-      width: 180px; height: 180px; border: 3px solid #10b981; border-radius: 12px;
-      box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.4); position: relative;
-    }
+    .scanner-box { width: 150px; height: 150px; border: 2px solid var(--success); border-radius: 8px; position: relative; }
 
-    .controls-bar { background: #1e293b; padding: 10px; display: flex; gap: 8px; flex-shrink: 0; }
-    .controls-bar button { flex: 1; padding: 12px; border-radius: 8px; border: none; background: #334155; color: white; font-weight: bold; font-size: 0.7rem; }
+    /* Barre d'outils Hardware */
+    .hw-bar { background: #1e293b; padding: 10px; display: flex; gap: 10px; flex-shrink: 0; }
+    .hw-bar button { flex: 1; padding: 12px; border-radius: 8px; border: none; background: #334155; color: white; font-weight: bold; font-size: 0.7rem; }
+    .zoom-ctrl { flex: 2; height: 30px; }
 
-    .status-area { background: white; color: #1e293b; padding: 10px; text-align: center; flex-shrink: 0; border-bottom: 2px solid var(--blue); }
-    .res-text { font-weight: 800; font-size: 1rem; min-height: 40px; display: flex; align-items: center; justify-content: center; }
+    /* Status et Résultat */
+    .status-panel { background: white; color: var(--bg); padding: 10px; text-align: center; flex-shrink: 0; }
+    .step-tag { font-size: 0.7rem; font-weight: bold; color: var(--primary); margin-bottom: 5px; }
+    .res-val { font-weight: 800; font-size: 1rem; min-height: 30px; word-break: break-all; }
 
-    .list-area { flex: 1; overflow-y: auto; padding: 10px; background: #f1f5f9; color: #1e293b; }
-    .card { background: white; padding: 10px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 5px solid var(--blue); font-size: 0.8rem; }
+    /* Liste */
+    .list-view { flex: 1; overflow-y: auto; padding: 10px; background: #f1f5f9; color: var(--bg); }
+    .item-card { background: white; padding: 10px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 5px solid var(--primary); font-size: 0.8rem; }
 
+    /* Pied de page et Gros bouton de scan */
     .footer { padding: 10px; background: white; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex-shrink: 0; }
-    .btn { padding: 14px; border-radius: 8px; border: none; font-weight: bold; font-size: 0.9rem; }
-    .btn-blue { background: var(--blue); color: white; grid-column: span 2; }
+    .btn-capture { background: var(--primary); color: white; padding: 16px; border-radius: 12px; border: none; font-weight: 900; font-size: 1.1rem; grid-column: span 2; }
+    .btn-panel { background: var(--success); color: white; padding: 12px; border: none; border-radius: 8px; font-weight: bold; grid-column: span 2; }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <div id="panel-display"><b>Panneau 1</b></div>
-    <button onclick="renamePanel()" style="background:none; color:white; border:1px solid #444; padding:4px 8px; border-radius:4px; font-size:0.6rem;">RENOMMER</button>
+    <div id="p-display"><b>Panneau 1</b></div>
+    <button onclick="renameP()" style="background:#334155; color:white; border:none; padding:4px 10px; border-radius:4px; font-size:0.6rem;">NOMMER</button>
   </div>
 
   <div id="video-wrapper">
@@ -55,24 +55,25 @@
     <div class="overlay"><div class="scanner-box"></div></div>
   </div>
 
-  <div class="controls-bar">
-    <button onclick="toggleTorch()">💡 TORCHE</button>
-    <button onclick="forceFocus()">🎯 FOCUS</button>
-    <input type="range" id="zoom" min="1" max="5" step="0.1" value="1" style="flex:2;">
+  <div class="hw-bar">
+    <button onclick="toggleT()">💡 TORCHE</button>
+    <button onclick="doF()">🎯 FOCUS</button>
+    <input type="range" id="zRange" min="1" max="8" step="0.1" value="1" class="zoom-ctrl">
   </div>
 
-  <div class="status-area">
-    <div id="step-label" style="font-size:0.7rem; font-weight:bold; color:var(--blue);">ÉTAPE : SCAN SN</div>
-    <div id="result-label" class="res-text">Visez le QR code du haut</div>
+  <div class="status-panel">
+    <div id="step-txt" class="step-tag">1. SCANNER LE SN</div>
+    <div id="res-txt" class="res-val">Appuyez sur "DÉMARRER"</div>
   </div>
 
-  <div class="list-area" id="inventory"></div>
+  <div class="list-view" id="list"></div>
 
   <div class="footer">
-    <button id="startBtn" class="btn btn-blue">DÉMARRER LE SCANNER</button>
-    <button onclick="nextPanel()" style="background:#10b981; color:white; grid-column: span 2;" class="btn">＋ PANNEAU SUIVANT</button>
-    <button onclick="exportCSV()" class="btn" style="background:#e2e8f0;">CSV</button>
-    <button onclick="clearData()" class="btn" style="background:#fee2e2; color:#ef4444;">VIDER</button>
+    <button id="startBtn" onclick="initCam()" class="btn-capture">DÉMARRER LA CAMÉRA</button>
+    <button id="scanBtn" onclick="takeSnapshot()" class="btn-capture" style="display:none;">PRENDRE LA PHOTO (SCAN)</button>
+    <button onclick="nextP()" class="btn-panel">＋ PANNEAU SUIVANT</button>
+    <button onclick="exportCSV()" style="background:#e2e8f0; border:none; padding:10px; border-radius:8px;">CSV</button>
+    <button onclick="clearAll()" style="background:#fee2e2; color:#ef4444; border:none; padding:10px; border-radius:8px;">VIDER</button>
   </div>
 
   <canvas id="canvas" style="display:none;"></canvas>
@@ -80,121 +81,108 @@
 <script>
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
-  const invDiv = document.getElementById('inventory');
-  const resLabel = document.getElementById('result-label');
-  const stepLabel = document.getElementById('step-label');
+  const listDiv = document.getElementById('list');
+  const resTxt = document.getElementById('res-txt');
+  const stepTxt = document.getElementById('step-txt');
   const ctx = canvas.getContext('2d', { alpha: false });
 
-  let scanData = JSON.parse(localStorage.getItem('scan_v14')) || {};
-  let curPanel = "Panneau 1";
+  let data = JSON.parse(localStorage.getItem('scan_v15')) || {};
+  let curP = "Panneau 1";
   let curSN = "";
-  let active = false;
   let track = null;
 
   render();
 
-  document.getElementById('startBtn').onclick = async () => {
+  async function initCam() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const s = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } 
       });
-      video.srcObject = stream;
-      track = stream.getVideoTracks()[0];
-      active = true;
+      video.srcObject = s;
+      track = s.getVideoTracks()[0];
       document.getElementById('startBtn').style.display = 'none';
-      requestAnimationFrame(tick);
-    } catch(e) { alert("Accès caméra refusé."); }
-  };
-
-  function tick() {
-    if (video.readyState === video.HAVE_ENOUGH_DATA && active) {
-      // On définit une zone de scan centrale (crop)
-      const scanSize = 300; // On analyse un carré de 300px au centre
-      canvas.width = scanSize;
-      canvas.height = scanSize;
-
-      // Calcul du centre de la vidéo
-      const sx = (video.videoWidth - scanSize) / 2;
-      const sy = (video.videoHeight - scanSize) / 2;
-
-      // On dessine uniquement le centre sur le canvas
-      ctx.drawImage(video, sx, sy, scanSize, scanSize, 0, 0, scanSize, scanSize);
-      
-      const code = jsQR(ctx.getImageData(0,0,scanSize,scanSize).data, scanSize, scanSize);
-      if (code) {
-        onDetected(code.data);
-        active = false;
-        setTimeout(() => { active = true; }, 2000);
-      }
-    }
-    requestAnimationFrame(tick);
+      document.getElementById('scanBtn').style.display = 'block';
+      resTxt.textContent = "Visez le code et cliquez sur le bouton bleu";
+    } catch(e) { alert("Erreur d'accès caméra."); }
   }
 
-  function onDetected(val) {
-    if (navigator.vibrate) navigator.vibrate(80);
+  function takeSnapshot() {
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      // Capture haute résolution
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imgData.data, imgData.width, imgData.height);
+      
+      if (code) {
+        handleCode(code.data);
+      } else {
+        resTxt.innerHTML = "<span style='color:red;'>Non détecté. Essayez de zoomer ou d'éloigner.</span>";
+        if (navigator.vibrate) navigator.vibrate(50);
+      }
+    }
+  }
+
+  function handleCode(val) {
+    if (navigator.vibrate) navigator.vibrate(100);
     if (!curSN) {
       curSN = val;
-      stepLabel.textContent = "ÉTAPE : SCAN MAC";
-      resLabel.innerHTML = `SN : <span style="color:var(--blue);">${val}</span>`;
+      stepTxt.textContent = "2. SCANNER LE MAC";
+      resTxt.innerHTML = `SN : <span style="color:#2563eb;">${val}</span>`;
     } else {
-      if (val === curSN) return;
-      saveEntry(curPanel, curSN, val);
+      if (val === curSN) {
+        resTxt.innerHTML = "<span style='color:orange;'>Même code détecté. Visez le MAC.</span>";
+        return;
+      }
+      save(curP, curSN, val);
       curSN = "";
-      resLabel.innerHTML = `<span style="color:#10b981;">✅ AJOUTÉ</span>`;
+      resTxt.innerHTML = `<span style="color:#10b981;">✅ ENREGISTRÉ</span>`;
       setTimeout(() => {
-        stepLabel.textContent = "ÉTAPE : SCAN SN";
-        resLabel.textContent = "Visez le SN suivant";
+        stepTxt.textContent = "1. SCANNER LE SN";
+        resTxt.textContent = "Prêt pour le suivant";
       }, 1500);
     }
   }
 
-  function saveEntry(p, s, m) {
-    if (!scanData[p]) scanData[p] = [];
-    scanData[p].push({ s, m, t: new Date().toLocaleTimeString() });
-    localStorage.setItem('scan_v14', JSON.stringify(scanData));
+  function save(p, s, m) {
+    if (!data[p]) data[p] = [];
+    data[p].push({ s, m, t: new Date().toLocaleTimeString() });
+    localStorage.setItem('scan_v15', JSON.stringify(data));
     render();
   }
 
   function render() {
-    invDiv.innerHTML = "";
-    Object.keys(scanData).reverse().forEach(p => {
-      scanData[p].forEach((item, i) => {
+    listDiv.innerHTML = "";
+    Object.keys(data).reverse().forEach(p => {
+      data[p].forEach((it, i) => {
         const d = document.createElement('div');
-        d.className = 'card';
-        d.innerHTML = `<b>${p}</b> | SN: ${item.s}<br>MAC: ${item.m} 
-                       <button onclick="removeItem('${p}',${i})" style="float:right; color:red; border:none; background:none;">X</button>`;
-        invDiv.appendChild(d);
+        d.className = 'item-card';
+        d.innerHTML = `<b>${p}</b> | SN: ${it.s}<br>MAC: ${it.m} 
+                       <button onclick="del('${p}',${i})" style="float:right; color:red; border:none; background:none; font-weight:bold;">X</button>`;
+        listDiv.appendChild(d);
       });
     });
   }
 
   // Fonctions S23
-  async function toggleTorch() {
-    if (track) {
-      const s = track.getSettings();
-      await track.applyConstraints({ advanced: [{ torch: !s.torch }] });
-    }
-  }
-  async function forceFocus() {
-    if(track) {
-      await track.applyConstraints({ advanced: [{ focusMode: "manual", focusDistance: 0.1 }] });
-      setTimeout(() => track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }), 500);
-    }
-  }
-  document.getElementById('zoom').oninput = async (e) => {
+  async function toggleT() { if(track) { const s = track.getSettings(); await track.applyConstraints({ advanced: [{ torch: !s.torch }] }); } }
+  async function doF() { if(track) await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }); }
+  document.getElementById('zRange').oninput = async (e) => {
     const v = parseFloat(e.target.value);
     if(track) { try { await track.applyConstraints({ advanced: [{ zoom: v }] }); } catch { video.style.transform = `scale(${v})`; } }
   };
 
-  function removeItem(p, i) { if(confirm("Supprimer ?")) { scanData[p].splice(i,1); if(!scanData[p].length) delete scanData[p]; localStorage.setItem('scan_v14', JSON.stringify(scanData)); render(); } }
-  function nextPanel() { curPanel = "Panneau " + (Object.keys(scanData).length + 1); document.getElementById('panel-display').innerHTML = `<b>${curPanel}</b>`; }
-  function renamePanel() { const n = prompt("Nom:", curPanel); if(n) { curPanel = n; document.getElementById('panel-display').innerHTML = `<b>${n}</b>`; } }
+  function del(p, i) { if(confirm("Supprimer ?")) { data[p].splice(i,1); if(!data[p].length) delete data[p]; localStorage.setItem('scan_v15', JSON.stringify(data)); render(); } }
+  function nextP() { curP = "Panneau " + (Object.keys(data).length + 1); document.getElementById('p-display').innerHTML = `<b>${curP}</b>`; }
+  function renameP() { const n = prompt("Nom:", curP); if(n) { curP = n; document.getElementById('p-display').innerHTML = `<b>${n}</b>`; } }
   function exportCSV() { 
-    let csv = "Panneau,SN,MAC\n"; 
-    for(const p in scanData) scanData[p].forEach(it => csv += `${p},${it.s},${it.m}\n`);
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = "inventaire.csv"; a.click();
+    let c = "Panneau,SN,MAC\n"; 
+    for(const p in data) data[p].forEach(it => c += `${p},${it.s},${it.m}\n`);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([c], {type:'text/csv'})); a.download = "inventaire.csv"; a.click();
   }
-  function clearData() { if(confirm("Vider ?")) { scanData={}; localStorage.removeItem('scan_v14'); render(); } }
+  function clearAll() { if(confirm("Vider tout ?")) { data={}; localStorage.removeItem('scan_v15'); render(); } }
 </script>
 </body>
 </html>
