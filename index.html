@@ -1,70 +1,22 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
-<meta charset="utf-8">
-<title>Scanner QR – Fix caméra</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <script src="https://unpkg.com/@zxing/browser@0.1.4"></script>
-
-<style>
-body{margin:0;font-family:system-ui;background:#0f172a;color:white;height:100vh;display:flex;flex-direction:column}
-header{background:#1e293b;padding:10px;text-align:center;font-weight:800}
-#videoWrap{flex:1;background:black;position:relative}
-video{width:100%;height:100%;object-fit:cover}
-.status{background:white;color:#0f172a;padding:10px;text-align:center;font-weight:700}
-button{padding:16px;margin:10px;border:none;border-radius:10px;font-size:1rem;font-weight:800;background:#2563eb;color:white}
-</style>
 </head>
-
 <body>
 
-<header>Scanner QR – Test caméra</header>
-
-<div id="videoWrap">
-  <video id="video" playsinline muted></video>
-</div>
-
-<div class="status" id="status">Appuyez sur DÉMARRER</div>
-<button onclick="start()">DÉMARRER LE SCAN</button>
+<button onclick="start()">Start</button>
+<video id="video" autoplay playsinline></video>
 
 <script>
-const video = document.getElementById("video");
-const status = document.getElementById("status");
+function start() {
+  alert("ZXing = " + typeof ZXing);
 
-let stream;
-let reader;
-
-async function start() {
-  status.textContent = "Demande accès caméra…";
-
-  try {
-    // 1️⃣ Démarrer la caméra EXPLICITEMENT
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
-      audio: false
-    });
-
-    video.srcObject = stream;
-    await video.play();
-
-    status.textContent = "Caméra OK – démarrage du scan";
-
-    // 2️⃣ Démarrer ZXing APRÈS vidéo active
-    reader = new ZXing.BrowserQRCodeReader();
-
-    reader.decodeFromVideoElement(video, (result, err) => {
-      if (result) {
-        status.textContent = "QR détecté : " + result.getText();
-        navigator.vibrate?.(200);
-      }
-    });
-
-  } catch (e) {
-    console.error(e);
-    status.textContent = "❌ Erreur caméra : " + e.message;
-    alert("Accès caméra refusé ou indisponible");
-  }
+  const reader = new ZXing.BrowserQRCodeReader();
+  reader.decodeFromVideoDevice(null, "video", (result, err) => {
+    if (result) alert(result.getText());
+  });
 }
 </script>
 
