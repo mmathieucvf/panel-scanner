@@ -2,67 +2,66 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Scanner v10 - Fix</title>
+  <title>Scanner v11 - Debug Mode</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    body { font-family: sans-serif; margin: 0; background: #f3f4f6; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-    .header { padding: 10px; background: #111827; color: white; display: flex; justify-content: space-between; flex-shrink: 0; }
+    body { font-family: sans-serif; margin: 0; background: #f3f4f6; display: flex; flex-direction: column; height: 100vh; }
+    .header { padding: 10px; background: #111827; color: white; display: flex; justify-content: space-between; font-size: 0.9rem; }
     
     /* Zone Vidéo */
-    #video-container { width: 100%; height: 200px; background: #000; flex-shrink: 0; position: relative; }
+    #video-container { width: 100%; height: 180px; background: #000; position: relative; overflow: hidden; border-bottom: 2px solid #2563eb; }
     video { width: 100%; height: 100%; object-fit: cover; }
     
-    /* Boutons de contrôle (Visibles par défaut) */
-    .hw-controls { background: #1f2937; padding: 10px; display: flex; gap: 5px; flex-shrink: 0; }
-    .hw-controls button { flex: 1; padding: 10px; font-size: 0.7rem; background: #374151; color: white; border: 1px solid #4b5563; border-radius: 4px; }
-    .zoom-slider { flex: 2; }
+    /* Contrôles Hardware */
+    .hw-controls { background: #1f2937; padding: 8px; display: flex; gap: 5px; }
+    .hw-controls button { flex: 1; padding: 10px; font-size: 0.7rem; background: #374151; color: white; border: none; border-radius: 4px; font-weight: bold; }
 
-    /* Statut */
-    .scanner-ui { padding: 10px; background: white; text-align: center; border-bottom: 2px solid #2563eb; flex-shrink: 0; }
-    .result-display { font-weight: bold; font-size: 1rem; min-height: 40px; margin-top: 5px; }
+    /* Zone de Scan et Debug */
+    .scanner-ui { padding: 10px; background: white; text-align: center; border-bottom: 1px solid #ddd; }
+    #debug-log { font-family: monospace; font-size: 0.7rem; color: #ef4444; margin-bottom: 5px; height: 15px; }
+    .step-indicator { font-weight: bold; font-size: 0.8rem; padding: 4px 10px; border-radius: 10px; display: inline-block; margin-bottom: 5px; }
+    .res-box { font-size: 1.1rem; font-weight: bold; min-height: 44px; color: #111827; border: 2px dashed #ccc; padding: 5px; display: flex; align-items: center; justify-content: center; }
 
-    /* Liste */
-    .inventory-list { flex: 1; overflow-y: auto; padding: 10px; }
-    .panel-group { margin-bottom: 10px; background: white; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-    .panel-title { background: #f9fafb; padding: 8px; font-weight: bold; font-size: 0.8rem; display: flex; justify-content: space-between; }
-    table { width: 100%; font-size: 0.75rem; border-collapse: collapse; }
-    td { padding: 8px; border-top: 1px solid #eee; }
+    /* Liste Inventaire */
+    .inventory-list { flex: 1; overflow-y: auto; padding: 10px; background: #eee; }
+    .item-card { background: white; padding: 10px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+    .item-info { font-size: 0.8rem; line-height: 1.4; }
+    .btn-del { background: #fee2e2; color: #ef4444; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; }
 
     /* Pied de page */
-    .footer { padding: 10px; background: white; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; flex-shrink: 0; }
-    .btn-blue { background: #2563eb; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; grid-column: span 2; }
+    .footer { padding: 10px; background: white; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn-blue { background: #2563eb; color: white; padding: 14px; border: none; border-radius: 8px; font-weight: bold; grid-column: span 2; }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <span id="current-panel-display" style="font-weight:bold;">Panneau 1</span>
-    <button onclick="renamePanel()" style="font-size:0.7rem; background:#4b5563; color:white; border:none; padding:4px 8px;">Renommer</button>
+    <span id="panel-name">Panneau 1</span>
+    <button onclick="renamePanel()" style="background:#4b5563; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.7rem;">NOMMER</button>
   </div>
 
-  <div id="video-container">
-    <video id="video" playsinline autoplay muted></video>
-  </div>
+  <div id="video-container"><video id="video" playsinline autoplay muted></video></div>
 
   <div class="hw-controls">
-    <button id="torchBtn">💡 TORCHE</button>
-    <button id="refocusBtn">🎯 FOCUS</button>
-    <input type="range" id="zoomRange" class="zoom-slider" min="1" max="5" step="0.1" value="1">
+    <button onclick="toggleTorch()">💡 TORCHE</button>
+    <button onclick="doFocus()">🎯 FOCUS</button>
+    <input type="range" id="zoomRange" min="1" max="5" step="0.1" value="1" style="flex:2;">
   </div>
 
   <div class="scanner-ui">
-    <div id="scan-mode" style="font-size:0.7rem; font-weight:bold; color:#1e40af;">ATTENTE SN</div>
-    <div id="last-result" class="result-display">Appuyez sur "DÉMARRER"</div>
+    <div id="debug-log">Prêt</div>
+    <div id="step-tag" class="step-indicator" style="background:#dbeafe; color:#1e40af;">SCANNER LE SN</div>
+    <div id="res-display" class="res-box">---</div>
   </div>
 
   <div class="inventory-list" id="inventory"></div>
 
   <div class="footer">
-    <button id="startBtn" class="btn-blue">DÉMARRER LA CAMÉRA</button>
-    <button onclick="nextPanelAuto()" style="background:#10b981; color:white; border:none; padding:10px; border-radius:6px; font-weight:bold; grid-column: span 2;">＋ NOUVEAU PANNEAU</button>
-    <button onclick="exportData()" style="background:#e5e7eb; padding:10px; border:none; border-radius:6px;">Exporter</button>
-    <button onclick="clearAll()" style="background:#fef2f2; color:#ef4444; padding:10px; border:none; border-radius:6px;">Vider</button>
+    <button id="startBtn" class="btn-blue">DÉMARRER LE SCANNER</button>
+    <button onclick="nextPanel()" style="background:#10b981; color:white; border:none; border-radius:8px; font-weight:bold; grid-column: span 2; padding:10px;">＋ PANNEAU SUIVANT</button>
+    <button onclick="exportCSV()" style="background:#e5e7eb; border:none; border-radius:8px; padding:10px;">EXPORTER</button>
+    <button onclick="clearAll()" style="background:#fef2f2; color:#ef4444; border:none; border-radius:8px;">VIDER</button>
   </div>
 
   <canvas id="canvas" style="display:none;"></canvas>
@@ -71,123 +70,118 @@
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
   const inventoryDiv = document.getElementById('inventory');
-  const lastResultDiv = document.getElementById('last-result');
+  const resDisplay = document.getElementById('res-display');
+  const debugLog = document.getElementById('debug-log');
+  const stepTag = document.getElementById('step-tag');
   const ctx = canvas.getContext('2d', { alpha: false });
 
-  let data = JSON.parse(localStorage.getItem('scanner_data')) || {};
-  let currentPanel = "Panneau 1";
-  let currentSN = "";
+  let data = JSON.parse(localStorage.getItem('scan_v11')) || {};
+  let curPanel = "Panneau 1";
+  let curSN = "";
   let isScanning = false;
-  let videoTrack = null;
+  let track = null;
 
-  renderInventory();
+  render();
 
   document.getElementById('startBtn').onclick = async () => {
-    lastResultDiv.textContent = "Lancement caméra...";
     try {
-      // Résolution réduite pour plus de compatibilité
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment', width: 1280, height: 720 } 
-      });
-      video.srcObject = stream;
-      videoTrack = stream.getVideoTracks()[0];
-      
-      // Force la lecture
-      video.onloadedmetadata = () => {
-        video.play();
-        isScanning = true;
-        lastResultDiv.textContent = "Prêt ! Scannez le SN";
-        document.getElementById('startBtn').style.display = 'none';
-        requestAnimationFrame(tick);
-      };
-    } catch(e) {
-      lastResultDiv.innerHTML = "<span style='color:red;'>ERREUR: " + e.name + "</span>";
-      console.error(e);
-    }
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: 1280, height: 720 } });
+      video.srcObject = s;
+      track = s.getVideoTracks()[0];
+      isScanning = true;
+      document.getElementById('startBtn').style.display = 'none';
+      requestAnimationFrame(tick);
+    } catch(e) { debugLog.textContent = "Erreur caméra: " + e.message; }
   };
 
   function tick() {
     if (video.readyState === video.HAVE_ENOUGH_DATA && isScanning) {
       canvas.width = video.videoWidth; canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height);
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(img.data, img.width, img.height);
+      
       if (code) {
-        processScan(code.data);
+        handleCode(code.data);
         isScanning = false;
-        setTimeout(() => { isScanning = true; }, 2000);
+        setTimeout(() => { isScanning = true; }, 2500); // Pause plus longue pour éviter les doublons
       }
     }
     requestAnimationFrame(tick);
   }
 
-  function processScan(val) {
-    if (!currentSN) {
-      currentSN = val;
-      document.getElementById('scan-mode').textContent = "ATTENTE MAC";
-      lastResultDiv.innerHTML = `SN: <span style="color:blue;">${val}</span><br>Scannez le MAC`;
-    } else {
-      saveEntry(currentPanel, currentSN, val);
-      lastResultDiv.innerHTML = `✅ Ajouté !<br>Prêt pour suivant`;
-      currentSN = "";
-      document.getElementById('scan-mode').textContent = "ATTENTE SN";
-    }
+  function handleCode(val) {
+    debugLog.textContent = "Vu: " + val;
     if (navigator.vibrate) navigator.vibrate(100);
+
+    if (!curSN) {
+      curSN = val;
+      stepTag.textContent = "SCANNER LE MAC";
+      stepTag.style.background = "#fef3c7"; stepTag.style.color = "#92400e";
+      resDisplay.innerHTML = `SN: <span style="color:blue;">${val}</span>`;
+    } else {
+      if (val === curSN) {
+        debugLog.textContent = "Erreur: Code identique au SN, ignore.";
+        return; 
+      }
+      save(curPanel, curSN, val);
+      resDisplay.innerHTML = `<span style="color:green;">✅ AJOUTÉ !</span>`;
+      curSN = "";
+      setTimeout(() => {
+        stepTag.textContent = "SCANNER LE SN";
+        stepTag.style.background = "#dbeafe"; stepTag.style.color = "#1e40af";
+        resDisplay.textContent = "---";
+      }, 1500);
+    }
   }
 
-  // Hardware controls
-  document.getElementById('torchBtn').onclick = async () => {
-    if (videoTrack) {
-      const caps = videoTrack.getCapabilities();
-      if (caps.torch) {
-        const currentTorch = videoTrack.getConstraints().advanced?.[0]?.torch || false;
-        await videoTrack.applyConstraints({ advanced: [{ torch: !currentTorch }] });
-      } else { alert("Torche non supportée"); }
-    }
-  };
-
-  document.getElementById('refocusBtn').onclick = async () => {
-    if (videoTrack) {
-      await videoTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
-    }
-  };
-
-  document.getElementById('zoomRange').oninput = async (e) => {
-    if (videoTrack) {
-      const val = parseFloat(e.target.value);
-      try { await videoTrack.applyConstraints({ advanced: [{ zoom: val }] }); }
-      catch(e) { video.style.transform = `scale(${val})`; }
-    }
-  };
-
-  function saveEntry(panel, sn, mac) {
-    if (!data[panel]) data[panel] = [];
-    data[panel].push({ sn, mac, time: new Date().toLocaleTimeString() });
-    localStorage.setItem('scanner_data', JSON.stringify(data));
-    renderInventory();
+  function save(p, s, m) {
+    if (!data[p]) data[p] = [];
+    data[p].push({ s, m, t: new Date().toLocaleTimeString() });
+    localStorage.setItem('scan_v11', JSON.stringify(data));
+    render();
   }
 
-  function renderInventory() {
+  function render() {
     inventoryDiv.innerHTML = "";
     Object.keys(data).reverse().forEach(p => {
-      const section = document.createElement('div'); section.className = 'panel-group';
-      let rows = data[p].map((c, i) => `<tr><td>SN: ${c.sn}<br>MAC: ${c.mac}</td><td style="text-align:right;"><button onclick="deleteRow('${p}',${i})" style="color:red; border:none; background:none;">X</button></td></tr>`).join('');
-      section.innerHTML = `<div class="panel-title"><span>${p}</span> <span>${data[p].length}</span></div><table>${rows}</table>`;
-      inventoryDiv.appendChild(section);
+      data[p].forEach((item, i) => {
+        const div = document.createElement('div');
+        div.className = 'item-card';
+        div.innerHTML = `<div class="item-info"><b>[${p}]</b><br>SN: ${item.s}<br>MAC: ${item.m}</div>
+                         <button class="btn-del" onclick="del('${p}',${i})">X</button>`;
+        inventoryDiv.appendChild(div);
+      });
     });
   }
 
-  function nextPanelAuto() {
-    currentPanel = "Panneau " + (Object.keys(data).length + 1);
-    document.getElementById('current-panel-display').textContent = currentPanel;
-    if (!data[currentPanel]) data[currentPanel] = [];
-    renderInventory();
+  // Fonctions de contrôle
+  async function toggleTorch() {
+    if (track) {
+      const c = track.getConstraints();
+      const on = c.advanced?.[0]?.torch || false;
+      await track.applyConstraints({ advanced: [{ torch: !on }] });
+    }
   }
+  async function doFocus() { if(track) await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }); }
+  document.getElementById('zoomRange').oninput = async (e) => {
+    if(track) {
+      const z = parseFloat(e.target.value);
+      try { await track.applyConstraints({ advanced: [{ zoom: z }] }); }
+      catch { video.style.transform = `scale(${z})`; }
+    }
+  };
 
-  function deleteRow(p, i) { if (confirm("Supprimer ?")) { data[p].splice(i,1); if(data[p].length==0) delete data[p]; localStorage.setItem('scanner_data', JSON.stringify(data)); renderInventory(); } }
-  function renamePanel() { const n = prompt("Nom:", currentPanel); if(n) { if(data[currentPanel]) { data[n]=data[currentPanel]; delete data[currentPanel]; } currentPanel=n; document.getElementById('current-panel-display').textContent=n; localStorage.setItem('scanner_data', JSON.stringify(data)); renderInventory(); } }
-  function exportData() { let csv = "Panneau,SN,MAC\n"; for(const p in data) data[p].forEach(c => csv += `${p},${c.sn},${c.mac}\n`); const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`export.csv`; a.click(); }
-  function clearAll() { if(confirm("Tout effacer ?")) { data={}; localStorage.removeItem('scanner_data'); renderInventory(); } }
+  function del(p, i) { if(confirm("Supprimer ?")) { data[p].splice(i,1); if(data[p].length==0) delete data[p]; localStorage.setItem('scan_v11', JSON.stringify(data)); render(); } }
+  function nextPanel() { curPanel = "Panneau " + (Object.keys(data).length + 1); document.getElementById('panel-name').textContent = curPanel; }
+  function renamePanel() { const n = prompt("Nom:", curPanel); if(n) { curPanel = n; document.getElementById('panel-name').textContent = n; } }
+  function exportCSV() { 
+    let csv = "Panneau,SN,MAC\n"; 
+    for(const p in data) data[p].forEach(item => csv += `${p},${item.s},${item.m}\n`);
+    const blob = new Blob([csv], {type: 'text/csv'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "inventaire.csv"; a.click();
+  }
+  function clearAll() { if(confirm("Vider tout ?")) { data={}; localStorage.removeItem('scan_v11'); render(); } }
 </script>
 </body>
 </html>
