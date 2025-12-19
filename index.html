@@ -2,74 +2,67 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Scanner v8 - Full Control</title>
+  <title>Scanner v10 - Fix</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    body { font-family: sans-serif; margin: 0; background: #f3f4f6; color: #1f2937; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    body { font-family: sans-serif; margin: 0; background: #f3f4f6; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    .header { padding: 10px; background: #111827; color: white; display: flex; justify-content: space-between; flex-shrink: 0; }
     
-    /* Header & Panel Info */
-    .header { padding: 10px 15px; background: #111827; color: white; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-    
-    /* Camera Zone */
-    #video-container { position: relative; width: 100%; height: 200px; background: #000; flex-shrink: 0; overflow: hidden; }
+    /* Zone Vidéo */
+    #video-container { width: 100%; height: 200px; background: #000; flex-shrink: 0; position: relative; }
     video { width: 100%; height: 100%; object-fit: cover; }
     
-    /* Hardware Controls (Zoom, Torch, Focus) */
-    .hw-controls { background: #1f2937; padding: 10px; display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
-    .hw-controls button { flex: 1; padding: 10px; font-size: 0.75rem; background: #374151; color: white; border: 1px solid #4b5563; border-radius: 6px; }
-    .zoom-slider { flex: 2; height: 30px; }
+    /* Boutons de contrôle (Visibles par défaut) */
+    .hw-controls { background: #1f2937; padding: 10px; display: flex; gap: 5px; flex-shrink: 0; }
+    .hw-controls button { flex: 1; padding: 10px; font-size: 0.7rem; background: #374151; color: white; border: 1px solid #4b5563; border-radius: 4px; }
+    .zoom-slider { flex: 2; }
 
-    /* Scan Status */
-    .scanner-ui { padding: 10px; background: white; text-align: center; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
-    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; margin-bottom: 5px; }
-    .status-sn { background: #dbeafe; color: #1e40af; }
-    .status-mac { background: #fef3c7; color: #92400e; }
+    /* Statut */
+    .scanner-ui { padding: 10px; background: white; text-align: center; border-bottom: 2px solid #2563eb; flex-shrink: 0; }
+    .result-display { font-weight: bold; font-size: 1rem; min-height: 40px; margin-top: 5px; }
 
-    /* Inventory List */
-    .inventory-list { flex: 1; overflow-y: auto; padding: 12px; }
-    .panel-group { margin-bottom: 15px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
-    .panel-title { background: #f9fafb; font-weight: bold; padding: 8px 12px; font-size: 0.85rem; display: flex; justify-content: space-between; border-bottom: 1px solid #eee; }
-    
-    table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
-    td { padding: 8px 10px; border-top: 1px solid #f3f4f6; }
-    .btn-delete { color: #ef4444; border: 1px solid #ef4444; padding: 2px 6px; border-radius: 4px; background: transparent; }
+    /* Liste */
+    .inventory-list { flex: 1; overflow-y: auto; padding: 10px; }
+    .panel-group { margin-bottom: 10px; background: white; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+    .panel-title { background: #f9fafb; padding: 8px; font-weight: bold; font-size: 0.8rem; display: flex; justify-content: space-between; }
+    table { width: 100%; font-size: 0.75rem; border-collapse: collapse; }
+    td { padding: 8px; border-top: 1px solid #eee; }
 
-    /* Footer Buttons */
-    .footer-actions { padding: 12px; background: white; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 1px solid #e5e7eb; flex-shrink: 0; }
-    .btn-main { background: #2563eb; color: white; padding: 12px; border-radius: 8px; border: none; font-weight: bold; grid-column: span 2; }
-    .btn-panel { background: #10b981; color: white; padding: 10px; border-radius: 8px; border: none; font-weight: bold; grid-column: span 2; margin-bottom: 5px; }
+    /* Pied de page */
+    .footer { padding: 10px; background: white; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; flex-shrink: 0; }
+    .btn-blue { background: #2563eb; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; grid-column: span 2; }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <div id="current-panel-display" style="font-weight: bold;">Panneau 1</div>
-    <button onclick="renamePanel()" style="padding: 5px 10px; font-size: 0.7rem; background: #4b5563; color: white; border: none; border-radius: 4px;">Renommer</button>
+    <span id="current-panel-display" style="font-weight:bold;">Panneau 1</span>
+    <button onclick="renamePanel()" style="font-size:0.7rem; background:#4b5563; color:white; border:none; padding:4px 8px;">Renommer</button>
   </div>
 
   <div id="video-container">
-    <video id="video" playsinline></video>
+    <video id="video" playsinline autoplay muted></video>
   </div>
 
-  <div class="hw-controls" id="hw-ui" style="display:none;">
-    <button id="torchBtn">TORCHE OFF</button>
-    <button id="refocusBtn">FOCUS</button>
+  <div class="hw-controls">
+    <button id="torchBtn">💡 TORCHE</button>
+    <button id="refocusBtn">🎯 FOCUS</button>
     <input type="range" id="zoomRange" class="zoom-slider" min="1" max="5" step="0.1" value="1">
   </div>
 
   <div class="scanner-ui">
-    <div id="scan-mode" class="status-badge status-sn">ATTENTE SN</div>
-    <div id="last-result" style="font-size: 0.75rem; color: #6b7280;">Scannez le SN du contrôleur</div>
+    <div id="scan-mode" style="font-size:0.7rem; font-weight:bold; color:#1e40af;">ATTENTE SN</div>
+    <div id="last-result" class="result-display">Appuyez sur "DÉMARRER"</div>
   </div>
 
   <div class="inventory-list" id="inventory"></div>
 
-  <div class="footer-actions">
-    <button id="startBtn" class="btn-main">ACTIVER LA CAMÉRA</button>
-    <button onclick="nextPanelAuto()" id="nextPanelBtn" class="btn-panel" style="display:none;">＋ NOUVEAU PANNEAU</button>
-    <button onclick="exportData()" style="background:#e5e7eb; color:#374151; border:none; border-radius:8px; padding:10px; font-weight:bold;">Exporter</button>
-    <button onclick="clearAll()" style="background:#fef2f2; color:#ef4444; border:none; border-radius:8px; padding:10px; font-weight:bold;">Vider</button>
+  <div class="footer">
+    <button id="startBtn" class="btn-blue">DÉMARRER LA CAMÉRA</button>
+    <button onclick="nextPanelAuto()" style="background:#10b981; color:white; border:none; padding:10px; border-radius:6px; font-weight:bold; grid-column: span 2;">＋ NOUVEAU PANNEAU</button>
+    <button onclick="exportData()" style="background:#e5e7eb; padding:10px; border:none; border-radius:6px;">Exporter</button>
+    <button onclick="clearAll()" style="background:#fef2f2; color:#ef4444; padding:10px; border:none; border-radius:6px;">Vider</button>
   </div>
 
   <canvas id="canvas" style="display:none;"></canvas>
@@ -78,11 +71,7 @@
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
   const inventoryDiv = document.getElementById('inventory');
-  const scanModeDiv = document.getElementById('scan-mode');
   const lastResultDiv = document.getElementById('last-result');
-  const zoomRange = document.getElementById('zoomRange');
-  const torchBtn = document.getElementById('torchBtn');
-  const refocusBtn = document.getElementById('refocusBtn');
   const ctx = canvas.getContext('2d', { alpha: false });
 
   let data = JSON.parse(localStorage.getItem('scanner_data')) || {};
@@ -90,30 +79,31 @@
   let currentSN = "";
   let isScanning = false;
   let videoTrack = null;
-  let torchOn = false;
 
   renderInventory();
 
   document.getElementById('startBtn').onclick = async () => {
+    lastResultDiv.textContent = "Lancement caméra...";
     try {
+      // Résolution réduite pour plus de compatibilité
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } 
+        video: { facingMode: 'environment', width: 1280, height: 720 } 
       });
       video.srcObject = stream;
       videoTrack = stream.getVideoTracks()[0];
-      await video.play();
       
-      isScanning = true;
-      document.getElementById('startBtn').style.display = 'none';
-      document.getElementById('nextPanelBtn').style.display = 'block';
-      document.getElementById('hw-ui').style.display = 'flex';
-      
-      // Essayer l'autofocus continu
-      const caps = videoTrack.getCapabilities();
-      if (caps.focusMode) videoTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
-
-      requestAnimationFrame(tick);
-    } catch(e) { alert("Erreur : " + e.message); }
+      // Force la lecture
+      video.onloadedmetadata = () => {
+        video.play();
+        isScanning = true;
+        lastResultDiv.textContent = "Prêt ! Scannez le SN";
+        document.getElementById('startBtn').style.display = 'none';
+        requestAnimationFrame(tick);
+      };
+    } catch(e) {
+      lastResultDiv.innerHTML = "<span style='color:red;'>ERREUR: " + e.name + "</span>";
+      console.error(e);
+    }
   };
 
   function tick() {
@@ -125,7 +115,7 @@
       if (code) {
         processScan(code.data);
         isScanning = false;
-        setTimeout(() => { isScanning = true; }, 1800);
+        setTimeout(() => { isScanning = true; }, 2000);
       }
     }
     requestAnimationFrame(tick);
@@ -134,51 +124,42 @@
   function processScan(val) {
     if (!currentSN) {
       currentSN = val;
-      scanModeDiv.textContent = "ATTENTE MAC";
-      scanModeDiv.className = "status-badge status-mac";
-      lastResultDiv.innerHTML = `SN: <b>${val}</b>. Scannez le MAC.`;
-      if (navigator.vibrate) navigator.vibrate(80);
+      document.getElementById('scan-mode').textContent = "ATTENTE MAC";
+      lastResultDiv.innerHTML = `SN: <span style="color:blue;">${val}</span><br>Scannez le MAC`;
     } else {
       saveEntry(currentPanel, currentSN, val);
+      lastResultDiv.innerHTML = `✅ Ajouté !<br>Prêt pour suivant`;
       currentSN = "";
-      scanModeDiv.textContent = "ATTENTE SN";
-      scanModeDiv.className = "status-badge status-sn";
-      lastResultDiv.innerHTML = `✅ Ajouté au ${currentPanel}`;
-      if (navigator.vibrate([80, 50, 80]));
+      document.getElementById('scan-mode').textContent = "ATTENTE SN";
     }
+    if (navigator.vibrate) navigator.vibrate(100);
   }
 
-  // --- HARDWARE CONTROLS ---
-  torchBtn.onclick = async () => {
-    if (!videoTrack) return;
-    torchOn = !torchOn;
-    try {
-      await videoTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
-      torchBtn.textContent = torchOn ? "TORCHE ON" : "TORCHE OFF";
-    } catch(e) { alert("Torche non supportée"); }
-  };
-
-  refocusBtn.onclick = async () => {
-    if (!videoTrack) return;
-    try {
-      await videoTrack.applyConstraints({ advanced: [{ focusMode: "manual", focusDistance: 0.1 }] });
-      setTimeout(() => {
-        videoTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
-      }, 500);
-    } catch(e) { alert("Focus manuel non supporté"); }
-  };
-
-  zoomRange.oninput = async () => {
-    if (!videoTrack) return;
-    const zoomVal = parseFloat(zoomRange.value);
-    try {
-      await videoTrack.applyConstraints({ advanced: [{ zoom: zoomVal }] });
-    } catch(e) {
-      video.style.transform = `scale(${zoomVal})`; // Fallback zoom numérique
+  // Hardware controls
+  document.getElementById('torchBtn').onclick = async () => {
+    if (videoTrack) {
+      const caps = videoTrack.getCapabilities();
+      if (caps.torch) {
+        const currentTorch = videoTrack.getConstraints().advanced?.[0]?.torch || false;
+        await videoTrack.applyConstraints({ advanced: [{ torch: !currentTorch }] });
+      } else { alert("Torche non supportée"); }
     }
   };
 
-  // --- LOGIQUE INVENTAIRE ---
+  document.getElementById('refocusBtn').onclick = async () => {
+    if (videoTrack) {
+      await videoTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+    }
+  };
+
+  document.getElementById('zoomRange').oninput = async (e) => {
+    if (videoTrack) {
+      const val = parseFloat(e.target.value);
+      try { await videoTrack.applyConstraints({ advanced: [{ zoom: val }] }); }
+      catch(e) { video.style.transform = `scale(${val})`; }
+    }
+  };
+
   function saveEntry(panel, sn, mac) {
     if (!data[panel]) data[panel] = [];
     data[panel].push({ sn, mac, time: new Date().toLocaleTimeString() });
@@ -186,61 +167,27 @@
     renderInventory();
   }
 
+  function renderInventory() {
+    inventoryDiv.innerHTML = "";
+    Object.keys(data).reverse().forEach(p => {
+      const section = document.createElement('div'); section.className = 'panel-group';
+      let rows = data[p].map((c, i) => `<tr><td>SN: ${c.sn}<br>MAC: ${c.mac}</td><td style="text-align:right;"><button onclick="deleteRow('${p}',${i})" style="color:red; border:none; background:none;">X</button></td></tr>`).join('');
+      section.innerHTML = `<div class="panel-title"><span>${p}</span> <span>${data[p].length}</span></div><table>${rows}</table>`;
+      inventoryDiv.appendChild(section);
+    });
+  }
+
   function nextPanelAuto() {
-    const nextNum = Object.keys(data).length + 1;
-    currentPanel = "Panneau " + nextNum;
+    currentPanel = "Panneau " + (Object.keys(data).length + 1);
     document.getElementById('current-panel-display').textContent = currentPanel;
     if (!data[currentPanel]) data[currentPanel] = [];
     renderInventory();
   }
 
-  function renamePanel() {
-    const name = prompt("Nom du panneau :", currentPanel);
-    if (name) {
-      if (data[currentPanel]) { data[name] = data[currentPanel]; delete data[currentPanel]; }
-      currentPanel = name;
-      document.getElementById('current-panel-display').textContent = name;
-      localStorage.setItem('scanner_data', JSON.stringify(data));
-      renderInventory();
-    }
-  }
-
-  function deleteRow(panel, idx) {
-    if (confirm("Supprimer ?")) {
-      data[panel].splice(idx, 1);
-      if (data[panel].length === 0) delete data[panel];
-      localStorage.setItem('scanner_data', JSON.stringify(data));
-      renderInventory();
-    }
-  }
-
-  function renderInventory() {
-    inventoryDiv.innerHTML = "";
-    Object.keys(data).reverse().forEach(panel => {
-      const section = document.createElement('div'); section.className = 'panel-group';
-      let rows = data[panel].map((c, i) => `
-        <tr>
-          <td>SN: ${c.sn}<br>MAC: ${c.mac}</td>
-          <td style="text-align:right;"><button class="btn-delete" onclick="deleteRow('${panel}', ${i})">X</button></td>
-        </tr>`).join('');
-      section.innerHTML = `
-        <div class="panel-title"><span>${panel}</span> <span>${data[panel].length} unités</span></div>
-        <table><tbody>${rows}</tbody></table>`;
-      inventoryDiv.appendChild(section);
-    });
-  }
-
-  function exportData() {
-    let csv = "Panneau,SN,MAC,Heure\n";
-    for (const p in data) data[p].forEach(c => csv += `${p},${c.sn},${c.mac},${c.time}\n`);
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `inventaire_${new Date().toISOString().split('T')[0]}.csv`; a.click();
-  }
-
-  function clearAll() {
-    if (confirm("Vider TOUT l'inventaire ?")) { data = {}; localStorage.removeItem('scanner_data'); renderInventory(); }
-  }
+  function deleteRow(p, i) { if (confirm("Supprimer ?")) { data[p].splice(i,1); if(data[p].length==0) delete data[p]; localStorage.setItem('scanner_data', JSON.stringify(data)); renderInventory(); } }
+  function renamePanel() { const n = prompt("Nom:", currentPanel); if(n) { if(data[currentPanel]) { data[n]=data[currentPanel]; delete data[currentPanel]; } currentPanel=n; document.getElementById('current-panel-display').textContent=n; localStorage.setItem('scanner_data', JSON.stringify(data)); renderInventory(); } }
+  function exportData() { let csv = "Panneau,SN,MAC\n"; for(const p in data) data[p].forEach(c => csv += `${p},${c.sn},${c.mac}\n`); const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`export.csv`; a.click(); }
+  function clearAll() { if(confirm("Tout effacer ?")) { data={}; localStorage.removeItem('scanner_data'); renderInventory(); } }
 </script>
 </body>
 </html>
