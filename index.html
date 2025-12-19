@@ -2,48 +2,61 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Scanner Pro v4</title>
+  <title>Scanner v7 - Inventaire Physique</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    body { font-family: sans-serif; margin: 0; background: #000; color: white; display: flex; flex-direction: column; height: 100vh; }
-    .header { padding: 15px; background: #111827; text-align: center; font-weight: bold; }
-    #video-container { flex: 1; position: relative; overflow: hidden; background: #000; }
+    body { font-family: sans-serif; margin: 0; background: #f3f4f6; color: #1f2937; display: flex; flex-direction: column; height: 100vh; }
+    .header { padding: 12px; background: #111827; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    
+    #video-container { position: relative; width: 100%; height: 200px; background: #000; flex-shrink: 0; border-bottom: 3px solid #2563eb; }
     video { width: 100%; height: 100%; object-fit: cover; }
     
-    .ui-overlay { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.7); padding: 20px; box-sizing: border-box; }
-    .status { margin-bottom: 15px; font-size: 0.9rem; min-height: 1.2rem; text-align: center; color: #10b981; }
+    .scanner-ui { padding: 12px; background: white; text-align: center; border-bottom: 1px solid #e5e7eb; }
+    .status-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+    .status-sn { background: #dbeafe; color: #1e40af; border: 1px solid #1e40af; }
+    .status-mac { background: #fef3c7; color: #92400e; border: 1px solid #92400e; }
+
+    .inventory-list { flex: 1; overflow-y: auto; padding: 15px; }
+    .panel-group { margin-bottom: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; }
+    .panel-title { background: #f9fafb; font-weight: bold; padding: 10px; font-size: 0.9rem; display: flex; justify-content: space-between; border-bottom: 1px solid #eee; }
     
-    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    button { padding: 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
-    .btn-primary { background: #2563eb; color: white; grid-column: span 2; }
-    .btn-secondary { background: #4b5563; color: white; }
-    
-    .zoom-slider { margin-top: 15px; width: 100%; }
-    label { font-size: 0.8rem; display: block; margin-bottom: 5px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    td { padding: 10px; border-top: 1px solid #f3f4f6; }
+    .btn-delete { color: #ef4444; border: 1px solid #ef4444; padding: 4px 8px; border-radius: 4px; background: transparent; font-size: 0.7rem; }
+
+    .controls { padding: 15px; background: white; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 1px solid #e5e7eb; }
+    button { padding: 14px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
+    .btn-main { background: #2563eb; color: white; width: 100%; }
+    .btn-next-panel { background: #10b981; color: white; grid-column: span 2; margin-bottom: 5px; }
   </style>
 </head>
 <body>
 
-  <div class="header">PANEL SCANNER v4</div>
+  <div class="header">
+    <div>
+      <div style="font-size: 0.7rem; opacity: 0.8;">PANNEAU ACTUEL</div>
+      <div id="current-panel-display" style="font-weight: bold;">Panneau 1</div>
+    </div>
+    <button onclick="renamePanel()" style="padding: 6px 10px; font-size: 0.7rem; background: #4b5563; color: white; border-radius: 4px; border: none;">Renommer</button>
+  </div>
 
   <div id="video-container">
     <video id="video" playsinline></video>
   </div>
 
-  <div class="ui-overlay">
-    <div id="status" class="status">Prêt</div>
-    
-    <div class="btn-group">
-      <button id="startBtn" class="btn-primary">DÉMARRER LA CAMÉRA</button>
-      <button id="torchBtn" class="btn-secondary" style="display:none;">TORCHE OFF</button>
-      <button id="refocusBtn" class="btn-secondary" style="display:none;">REFOCUS</button>
-    </div>
+  <div class="scanner-ui">
+    <div id="scan-mode" class="status-badge status-sn">Attente SN</div>
+    <div id="last-result" style="font-size: 0.8rem; color: #6b7280;">Scannez le premier code (SN)</div>
+  </div>
 
-    <div id="zoom-area" style="display:none;">
-      <label>Zoom Matériel :</label>
-      <input type="range" id="zoomRange" class="zoom-slider" min="1" max="5" step="0.1" value="1">
-    </div>
+  <div class="inventory-list" id="inventory"></div>
+
+  <div class="controls">
+    <button id="startBtn" class="btn-main" style="grid-column: span 2;">OUVRIR LA CAMÉRA</button>
+    <button onclick="nextPanelAuto()" class="btn-next-panel">＋ NOUVEAU PANNEAU (Suivant)</button>
+    <button onclick="exportData()" style="background:#e5e7eb; color:#374151;">Exporter CSV</button>
+    <button onclick="clearAll()" style="background:#fef2f2; color:#ef4444;">Vider</button>
   </div>
 
   <canvas id="canvas" style="display:none;"></canvas>
@@ -51,97 +64,138 @@
 <script>
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
-  const status = document.getElementById('status');
-  const startBtn = document.getElementById('startBtn');
-  const torchBtn = document.getElementById('torchBtn');
-  const refocusBtn = document.getElementById('refocusBtn');
-  const zoomRange = document.getElementById('zoomRange');
+  const inventoryDiv = document.getElementById('inventory');
+  const scanModeDiv = document.getElementById('scan-mode');
+  const lastResultDiv = document.getElementById('last-result');
   const ctx = canvas.getContext('2d', { alpha: false });
 
-  let videoTrack = null;
+  let data = JSON.parse(localStorage.getItem('scanner_data')) || {};
+  let panelList = Object.keys(data);
+  let currentPanel = panelList.length > 0 ? panelList[panelList.length - 1] : "Panneau 1";
+  let currentSN = "";
+  let isScanning = false;
 
-  startBtn.onclick = async () => {
+  document.getElementById('current-panel-display').textContent = currentPanel;
+  renderInventory();
+
+  document.getElementById('startBtn').onclick = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment', width: { ideal: 1280 } } 
       });
       video.srcObject = stream;
-      videoTrack = stream.getVideoTracks()[0];
-      
       await video.play();
-      startBtn.style.display = 'none';
-      torchBtn.style.display = 'block';
-      refocusBtn.style.display = 'block';
-      document.getElementById('zoom-area').style.display = 'block';
-
-      // Tenter d'activer l'autofocus continu
-      const capabilities = videoTrack.getCapabilities();
-      if (capabilities.focusMode) {
-        videoTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
-      }
-
+      isScanning = true;
+      document.getElementById('startBtn').style.display = 'none';
       requestAnimationFrame(tick);
-    } catch (err) {
-      status.textContent = "Erreur: " + err.message;
-    }
-  };
-
-  // Bouton pour forcer le focus (sur certains Android)
-  refocusBtn.onclick = async () => {
-    if (videoTrack) {
-      status.textContent = "Mise au point...";
-      try {
-        await videoTrack.applyConstraints({ advanced: [{ focusMode: "manual", focusDistance: 0.1 }] }); // Focus proche
-        setTimeout(() => {
-          videoTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
-        }, 500);
-      } catch (e) { status.textContent = "Focus manuel non supporté"; }
-    }
-  };
-
-  // Gestion de la lampe torche
-  let torchOn = false;
-  torchBtn.onclick = async () => {
-    if (videoTrack) {
-      torchOn = !torchOn;
-      try {
-        await videoTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
-        torchBtn.textContent = torchOn ? "TORCHE ON" : "TORCHE OFF";
-      } catch (e) { status.textContent = "Flash non supporté"; }
-    }
-  };
-
-  // Zoom Matériel
-  zoomRange.oninput = async () => {
-    if (videoTrack) {
-      try {
-        await videoTrack.applyConstraints({ advanced: [{ zoom: parseFloat(zoomRange.value) }] });
-      } catch (e) {
-        // Fallback zoom numérique si le matériel échoue
-        video.style.transform = `scale(${zoomRange.value})`;
-      }
-    }
+    } catch(e) { alert("Caméra non détectée"); }
   };
 
   function tick() {
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+    if (video.readyState === video.HAVE_ENOUGH_DATA && isScanning) {
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(imageData.data, imageData.width, imageData.height);
 
       if (code) {
-        status.innerHTML = "✅ TROUVÉ : " + code.data;
-        if (navigator.vibrate) navigator.vibrate(200);
+        processScan(code.data);
+        isScanning = false;
+        setTimeout(() => { isScanning = true; }, 1800);
       }
     }
     requestAnimationFrame(tick);
+  }
+
+  function processScan(val) {
+    if (!currentSN) {
+      currentSN = val;
+      scanModeDiv.textContent = "Attente MAC";
+      scanModeDiv.className = "status-badge status-mac";
+      lastResultDiv.innerHTML = `SN: <b>${val}</b> scanné.`;
+      if (navigator.vibrate) navigator.vibrate(80);
+    } else {
+      saveEntry(currentPanel, currentSN, val);
+      currentSN = "";
+      scanModeDiv.textContent = "Attente SN";
+      scanModeDiv.className = "status-badge status-sn";
+      lastResultDiv.innerHTML = `Contrôleur ajouté au <b>${currentPanel}</b>`;
+      if (navigator.vibrate([80, 50, 80]));
+    }
+  }
+
+  function saveEntry(panel, sn, mac) {
+    if (!data[panel]) data[panel] = [];
+    data[panel].push({ sn, mac, time: new Date().toLocaleTimeString() });
+    localStorage.setItem('scanner_data', JSON.stringify(data));
+    renderInventory();
+  }
+
+  function nextPanelAuto() {
+    const nextNum = Object.keys(data).length + 1;
+    const name = "Panneau " + nextNum;
+    currentPanel = name;
+    document.getElementById('current-panel-display').textContent = name;
+    if (!data[name]) data[name] = [];
+    renderInventory();
+  }
+
+  function renamePanel() {
+    const name = prompt("Nouveau nom pour ce panneau :", currentPanel);
+    if (name && name !== currentPanel) {
+      if (data[currentPanel]) {
+        data[name] = data[currentPanel];
+        delete data[currentPanel];
+      } else {
+        data[name] = [];
+      }
+      currentPanel = name;
+      document.getElementById('current-panel-display').textContent = name;
+      localStorage.setItem('scanner_data', JSON.stringify(data));
+      renderInventory();
+    }
+  }
+
+  function deleteRow(panel, idx) {
+    if (confirm("Supprimer cette ligne ?")) {
+      data[panel].splice(idx, 1);
+      if (data[panel].length === 0) delete data[panel];
+      localStorage.setItem('scanner_data', JSON.stringify(data));
+      renderInventory();
+    }
+  }
+
+  function renderInventory() {
+    inventoryDiv.innerHTML = "";
+    Object.keys(data).reverse().forEach(panel => {
+      const section = document.createElement('div');
+      section.className = 'panel-group';
+      let rows = data[panel].map((c, i) => `
+        <tr>
+          <td><b>SN:</b> ${c.sn}<br><b>MAC:</b> ${c.mac}</td>
+          <td style="text-align:right;"><button class="btn-delete" onclick="deleteRow('${panel}', ${i})">X</button></td>
+        </tr>`).join('');
+      section.innerHTML = `
+        <div class="panel-title"><span>${panel}</span> <span>${data[panel].length} unités</span></div>
+        <table><tbody>${rows}</tbody></table>`;
+      inventoryDiv.appendChild(section);
+    });
+  }
+
+  function exportData() {
+    let csv = "Panneau,SN,MAC,Heure\n";
+    for (const p in data) data[p].forEach(c => csv += `${p},${c.sn},${c.mac},${c.time}\n`);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `inventaire_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+  }
+
+  function clearAll() {
+    if (confirm("Tout effacer ?")) {
+      data = {}; localStorage.removeItem('scanner_data'); renderInventory();
+    }
   }
 </script>
 </body>
