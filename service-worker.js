@@ -1,4 +1,4 @@
-const CACHE_NAME = 'panel-scanner-v12';
+const CACHE_NAME = 'panel-scanner-v13';
 const ASSETS = [
   './',
   './index.html',
@@ -18,6 +18,7 @@ self.addEventListener('fetch', event => {
   );
 
 });
+
 
 
 
